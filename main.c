@@ -358,10 +358,11 @@ int handleoutput( int fd )
 {
     // We are looking for the string
     static int prevmatch=0; // If the "password" prompt is repeated, we have the wrong password.
-    static int state1, state2, state3;
+    static int state1, state2, state3, state4;
     static const char compare1[]="assword:"; // Asking for a password
     static const char compare2[]="The authenticity of host "; // Asks to authenticate host
     static const char compare3[]="assword for "; // Asking for a password using the new OpenPAM prompts
+    static const char compare4[]="Verification code:"; // Asking for a google authenticator TOTP Code
     // static const char compare3[]="WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!"; // Warns about man in the middle attack
     // The remote identification changed error is sent to stderr, not the tty, so we do not handle it.
     // This is not a problem, as ssh exists immediately in such a case
@@ -391,6 +392,20 @@ int handleoutput( int fd )
             if( !prevmatch ) {
                 write_pass( fd );
                 state3=0;
+                prevmatch=1;
+            } else {
+                ret=RETURN_INCORRECT_PASSWORD;
+            }
+        }
+    }
+    
+    // Look for google authenticator TOTP codes
+    if( ret==0 ) {
+        state4=match( compare4, buffer, numread, state4 );
+        if( compare4[state4]=='\0' ) {
+            if( !prevmatch ) {
+                write_pass( fd );
+                state4=0;
                 prevmatch=1;
             } else {
                 ret=RETURN_INCORRECT_PASSWORD;
