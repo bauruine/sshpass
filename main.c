@@ -358,9 +358,10 @@ int handleoutput( int fd )
 {
     // We are looking for the string
     static int prevmatch=0; // If the "password" prompt is repeated, we have the wrong password.
-    static int state1, state2;
+    static int state1, state2, state3;
     static const char compare1[]="assword:"; // Asking for a password
     static const char compare2[]="The authenticity of host "; // Asks to authenticate host
+    static const char compare3[]="assword for "; // Asking for a password using the new OpenPAM prompts
     // static const char compare3[]="WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!"; // Warns about man in the middle attack
     // The remote identification changed error is sent to stderr, not the tty, so we do not handle it.
     // This is not a problem, as ssh exists immediately in such a case
@@ -381,6 +382,20 @@ int handleoutput( int fd )
 	    // Wrong password - terminate with proper error code
 	    ret=RETURN_INCORRECT_PASSWORD;
 	}
+    }
+
+    // Look for the newer OpenPAM prompt as well
+    if( ret==0 ) {
+        state3=match( compare3, buffer, numread, state3 );
+        if( compare3[state3]=='\0' ) {
+            if( !prevmatch ) {
+                write_pass( fd );
+                state3=0;
+                prevmatch=1;
+            } else {
+                ret=RETURN_INCORRECT_PASSWORD;
+            }
+        }
     }
 
     if( ret==0 ) {
